@@ -31,7 +31,7 @@ prepare()
 	cd "$srcdir/kicad"
 
 	# override default icons with 7 ones
-	cp -r resources/linux/icons-7/hicolor/* resources/linux/icons/hicolor/
+	cp -r resources/linux/icons-nightly/hicolor/* resources/linux/icons/hicolor/
 
 	# prevent translation of metadata files
 	patch -p0 -i ../no-metadata-translation.patch
