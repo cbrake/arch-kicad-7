@@ -15,8 +15,9 @@ optdepends=(
 	'kicad-library-nightly: for footprints and symbols'
 	'kicad-library-3d-nightly: for 3d models of components'
 )
+_commit='0677b11a926d2eeabe5194c48dfef7076d022a33'
 source=(
-	'git+https://gitlab.com/kicad/code/kicad.git'#commit=79f13ea9c7
+	'git+https://gitlab.com/kicad/code/kicad.git'#commit=$_commit
 	'kicad-7.env'
 	'no-metadata-translation.patch'
 )
