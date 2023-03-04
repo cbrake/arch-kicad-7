@@ -1,0 +1,3 @@
+[submodule "kicad-nightly"]
+	path = kicad-nightly
+	url = https://aur.archlinux.org/kicad-nightly.git/
