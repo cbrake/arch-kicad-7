@@ -1,0 +1,107 @@
+# Maintainer: Rachel Mant <aur@dragonmux.network>
+# Maintainer: Rafael Silva <perigoso@riseup.net>
+
+pkgname=kicad-7
+pkgver=7.0.0
+pkgrel=1
+pkgdesc='Electronic schematic and printed circuit board (PCB) design tools'
+arch=('x86_64')
+url='http://kicad.org/'
+license=('GPL')
+depends=('wxwidgets-gtk3' 'python' 'boost-libs' 'glew' 'curl' 'glm' 'ngspice' 'opencascade' 'python-wxpython' 'unixodbc')
+makedepends=('git' 'cmake' 'zlib' 'mesa' 'boost' 'swig' 'ninja' 'tar' 'gzip')
+options=('!strip')
+optdepends=(
+	'kicad-library-nightly: for footprints and symbols'
+	'kicad-library-3d-nightly: for 3d models of components'
+)
+source=(
+	'git+https://gitlab.com/kicad/code/kicad.git'#commit=79f13ea9c7
+	'kicad-7.env'
+	'no-metadata-translation.patch'
+)
+sha256sums=(
+	'SKIP'
+	'fce26af6b9c181a99197bfc9bc6c778561ad55a375480f4d0d73bb34078b5d18'
+	'649b1b0e541f22a49f1934a6173266cabde984a97fba583c3b75dd41940b86f8'
+)
+
+prepare()
+{
+	cd "$srcdir/kicad"
+
+	# override default icons with 7 ones
+	cp -r resources/linux/icons-7/hicolor/* resources/linux/icons/hicolor/
+
+	# prevent translation of metadata files
+	patch -p0 -i ../no-metadata-translation.patch
+}
+
+build()
+{
+	cd "$srcdir/kicad"
+
+	rm -rf build
+	mkdir build
+	cd build
+	cmake .. -G Ninja \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/usr/lib/kicad-7 \
+		-DCMAKE_INSTALL_DATADIR=/usr/share/kicad-7 \
+		-DCMAKE_INSTALL_DOCDIR=/usr/share/doc/kicad-7 \
+		-DCMAKE_INSTALL_LIBDIR=/usr/lib/kicad-nightly/lib \
+		-DCMAKE_EXECUTABLE_SUFFIX=-7 \
+		-DKICAD_USE_OCC=ON \
+		-DKICAD_USE_EGL=ON \
+		-DKICAD_SCRIPTING_WXPYTHON=ON \
+		-DKICAD_BUILD_I18N=ON \
+		-DKICAD_DATA=/usr/share/kicad-7 \
+		-Wno-dev
+	ninja
+}
+
+package()
+{
+	cd "$srcdir/kicad/build"
+
+	DESTDIR="$pkgdir" ninja install
+
+	mkdir -p "$pkgdir/usr/share/applications"
+	programs=$(ls "$pkgdir/usr/share/kicad-7/applications" | sed -s 's/\.desktop//g')
+	for prog in $programs; do
+		sed -i \
+			-e 's/^Exec=\([^ ]*\)\(.*\)$/Exec=\1-7\2/g' \
+			-e 's/^Icon=\(.*\)$/Icon=\1-7/g' \
+			-e 's/^Name=\(.*\)$/Name=\1 7/g' \
+			"$pkgdir/usr/share/kicad-7/applications/$prog.desktop"
+		ln -sv "../kicad-7/applications/$prog.desktop" \
+			"$pkgdir/usr/share/applications/${prog}-7.desktop"
+	done
+
+	cd "$srcdir"
+	mkdir -p "$pkgdir/usr/share/kicad-7"
+	cp kicad-7.env "$pkgdir/usr/share/kicad-7/kicad-7.env"
+
+	mkdir -p "$pkgdir/usr/bin"
+	(cd "$pkgdir/usr/lib/kicad-7/bin" && ls | grep -v '\.kiface') | while read prog; do
+		cat > "$pkgdir/usr/bin/$prog-7" <<EOF
+#!/bin/sh
+. /usr/share/kicad-7/kicad-7.env
+exec /usr/lib/kicad-7/bin/$prog "\$@"
+EOF
+		chmod +x "$pkgdir/usr/bin/$prog-7"
+	done
+
+	icons=$(find $pkgdir/usr/share/kicad-7/icons/ -type f -name kicad.*)
+	for icon in $icons; do
+		path=${icon%/*}
+		relpath=${path##*/kicad-7/}
+		basename=${icon##*/}
+		extension=${basename##*.}
+		filename=${basename%.*}
+
+		mkdir -p "$pkgdir/usr/share/$relpath"
+		mv "$icon" "$pkgdir/usr/share/$relpath/$filename-7.$extension"
+	done
+}
+
